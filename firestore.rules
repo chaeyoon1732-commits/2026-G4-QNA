@@ -1,0 +1,62 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(data) {
+      return isSignedIn() && data.authorId == request.auth.uid;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'chaeyoon1732@gmail.com' && request.auth.token.email_verified == true
+      );
+    }
+
+    function isValidId(id) {
+       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Validations ---
+    function isValidQuestion(data) {
+      return data.keys().hasAll(['authorId', 'category', 'mentor', 'text', 'date', 'createdAt'])
+        && data.keys().size() == 6
+        && data.authorId == request.auth.uid
+        && data.category in ['knowhow', 'relation', 'growth', 'casual']
+        && data.mentor in ['branch', 'center']
+        && data.text is string && data.text.size() > 0 && data.text.size() <= 1000
+        && data.date is string && data.date.size() <= 100
+        && data.createdAt == request.time;
+    }
+
+    // --- Collections ---
+    match /questions/{questionId} {
+      allow get: if true; // Publicly viewable questions for the session
+      allow list: if true; // Publicly listable for dashboard
+      
+      allow create: if isSignedIn() 
+        && isValidId(questionId)
+        && isValidQuestion(incoming());
+
+      allow update: if false; // Questions are immutable for users
+      
+      allow delete: if isAdmin(); // Only admins can clear dashboard
+    }
+  }
+}

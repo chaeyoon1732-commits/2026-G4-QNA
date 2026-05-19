@@ -1,0 +1,8 @@
+{
+  "name": "Hyundai G4 Emerging LEADER Portal",
+  "description": "G4 Emerging LEADER 과정을 위한 현장리더 선배와의 대화 및 실시간 대시보드 플랫폼",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

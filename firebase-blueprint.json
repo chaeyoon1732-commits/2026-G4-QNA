@@ -1,0 +1,25 @@
+{
+  "entities": {
+    "Question": {
+      "title": "Question",
+      "description": "A question asked by a G4 3rd year employee to a mentor.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The document ID (or timestamp-based ID)" },
+        "authorId": { "type": "string", "description": "The user ID of the person who asked the question" },
+        "category": { "type": "string", "enum": ["knowhow", "relation", "growth", "casual"], "description": "The category of the question" },
+        "mentor": { "type": "string", "enum": ["branch", "center"], "description": "The targeting mentor type" },
+        "text": { "type": "string", "description": "The content of the question" },
+        "date": { "type": "string", "format": "date-time", "description": "When the question was asked" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp for creation" }
+      },
+      "required": ["authorId", "category", "mentor", "text", "date", "createdAt"]
+    }
+  },
+  "firestore": {
+    "questions": {
+      "schema": "Question",
+      "description": "Global collection of questions"
+    }
+  }
+}
