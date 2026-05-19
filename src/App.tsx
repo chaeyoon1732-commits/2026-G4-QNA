@@ -150,6 +150,8 @@ export default function App() {
   const [dashCatFilter, setDashCatFilter] = useState<'all' | keyof typeof CATEGORIES>('all');
   const [dashMentorFilter, setDashMentorFilter] = useState<'all' | keyof typeof MENTORS>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
 
   // Initialize Auth and Real-time sync
@@ -207,14 +209,21 @@ export default function App() {
   }, [questions, dashCatFilter, dashMentorFilter, searchQuery]);
 
   const handleSubmit = async () => {
-    if (!selectedMentor) return;
-    if (!selectedCategory) return;
-    if (questionText.length < 10) return;
+    if (!selectedMentor || !selectedCategory || questionText.length < 10 || isSubmitting) return;
+
+    setIsSubmitting(true);
+    setSubmitError(null);
 
     try {
-      const user = await ensureAuth();
+      let user = null;
+      try {
+        user = await ensureAuth();
+      } catch (e) {
+        console.warn("Auth failed, attempting guest submission", e);
+      }
+
       const newQuestion = {
-        authorId: user?.uid,
+        authorId: user?.uid || `guest-${Date.now()}`,
         category: selectedCategory,
         mentor: selectedMentor,
         text: questionText,
@@ -228,8 +237,25 @@ export default function App() {
       setQuestionText('');
       setSelectedCategory('');
       setSelectedMentor('');
-    } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'questions');
+    } catch (error: any) {
+      console.error("Submit error detail:", error);
+      let message = "질문 전송 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.";
+      
+      const errorCode = error.code || "";
+      const errorMsg = error.message?.toLowerCase() || "";
+
+      if (errorCode === 'auth/admin-restricted-operation' || errorMsg.includes('admin-restricted-operation')) {
+        message = "서버 익명 인증이 비활성화되어 있습니다. 관리자에게 문의하세요.";
+      } else if (errorCode === 'permission-denied' || errorMsg.includes('permission-denied')) {
+        message = "권한이 없습니다. (Firestore Security Rules 확인 필요)";
+      } else {
+        // Show the actual error message for debugging if it's not a common one
+        message = `전송 실패: ${error.message || '알 수 없는 오류'}`;
+      }
+      
+      setSubmitError(message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -510,17 +536,29 @@ export default function App() {
                     </div>
 
                     <div className="mt-8">
+                        {submitError && (
+                          <div className="mb-4 p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-600 text-sm font-bold animate-shake">
+                            <AlertTriangle size={20} />
+                            {submitError}
+                          </div>
+                        )}
                         <button
                             onClick={handleSubmit}
-                            disabled={!selectedCategory || !selectedMentor || questionText.length < 10}
+                            disabled={!selectedCategory || !selectedMentor || questionText.length < 10 || isSubmitting}
                             className={`w-full font-black py-5 rounded-2xl shadow-lg transition-all duration-300 flex items-center justify-center gap-3 text-base md:text-lg ${
-                                selectedCategory && selectedMentor && questionText.length >= 10
+                                selectedCategory && selectedMentor && questionText.length >= 10 && !isSubmitting
                                 ? 'bg-hyundai-navy text-white hover:bg-hyundai-darkblue hover:shadow-xl hover:-translate-y-0.5'
                                 : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                             }`}
                         >
-                            <span>현장 선배 멘토에게 전송하기</span>
-                            <Send size={20} />
+                            {isSubmitting ? (
+                              <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+                            ) : (
+                              <>
+                                <span>현장 선배 멘토에게 전송하기</span>
+                                <Send size={20} />
+                              </>
+                            )}
                         </button>
                         <p className="text-xs sm:text-sm text-center text-slate-400 mt-8 font-bold flex items-center justify-center gap-1.5 tracking-tight">
                             <RotateCcw size={14} className="text-hyundai-blue animate-spin-slow" /> 

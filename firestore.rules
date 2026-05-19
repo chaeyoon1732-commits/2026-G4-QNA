@@ -34,10 +34,9 @@ service cloud.firestore {
     }
 
     // --- Validations ---
-    function isValidQuestion(data) {
+    function isValidQuestionFields(data) {
       return data.keys().hasAll(['authorId', 'category', 'mentor', 'text', 'date', 'createdAt'])
         && data.keys().size() == 6
-        && data.authorId == request.auth.uid
         && data.category in ['knowhow', 'relation', 'growth', 'casual']
         && data.mentor in ['branch', 'center']
         && data.text is string && data.text.size() > 0 && data.text.size() <= 1000
@@ -47,16 +46,16 @@ service cloud.firestore {
 
     // --- Collections ---
     match /questions/{questionId} {
-      allow get: if true; // Publicly viewable questions for the session
-      allow list: if true; // Publicly listable for dashboard
+      allow get: if true; 
+      allow list: if true; 
       
-      allow create: if isSignedIn() 
+      allow create: if (request.auth != null ? incoming().authorId == request.auth.uid : incoming().authorId is string)
         && isValidId(questionId)
-        && isValidQuestion(incoming());
+        && isValidQuestionFields(incoming());
 
-      allow update: if false; // Questions are immutable for users
+      allow update: if false;
       
-      allow delete: if isAdmin(); // Only admins can clear dashboard
+      allow delete: if isAdmin();
     }
   }
 }
