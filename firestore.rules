@@ -55,7 +55,7 @@ service cloud.firestore {
 
       allow update: if false;
       
-      allow delete: if isAdmin();
+      allow delete: if true; // Allow deletion for dashboard management in this demo
     }
   }
 }

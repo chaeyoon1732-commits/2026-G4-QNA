@@ -47,7 +47,8 @@ import {
   getDocs,
   writeBatch
 } from 'firebase/firestore';
-import { db, auth, ensureAuth, handleFirestoreError, OperationType } from './lib/firebase';
+import { db, auth, ensureAuth, handleFirestoreError, OperationType, signInWithGoogle } from './lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 
 // --- Types ---
 interface Question {
@@ -151,11 +152,20 @@ export default function App() {
   const [dashMentorFilter, setDashMentorFilter] = useState<'all' | keyof typeof MENTORS>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
 
   // Initialize Auth and Real-time sync
   useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (user && user.email === 'chaeyoon1732@gmail.com') {
+        setIsAdminLoggedIn(true);
+      } else {
+        setIsAdminLoggedIn(false);
+      }
+    });
+
     const init = async () => {
       try {
         await ensureAuth();
@@ -165,6 +175,8 @@ export default function App() {
       }
     };
     init();
+
+    return () => unsubscribeAuth();
   }, []);
 
   useEffect(() => {
@@ -917,6 +929,30 @@ export default function App() {
                     className="flex-grow bg-hyundai-navy text-white font-black py-4.5 rounded-2xl text-sm hover:bg-hyundai-darkblue shadow-lg active:scale-95 transition-all"
                   >
                     인증하기
+                  </button>
+                </div>
+
+                <div className="pt-6 border-t border-slate-100 mt-6">
+                  <p className="text-[10px] font-black text-slate-400 mb-4 tracking-widest uppercase">Admin Quick Access</p>
+                  <button 
+                    onClick={async () => {
+                      try {
+                        const result = await signInWithGoogle();
+                        if (result.user.email === 'chaeyoon1732@gmail.com') {
+                          setShowAdminLogin(false);
+                          setView('dashboard');
+                        } else {
+                          alert('해당 계정은 관리 권한이 없습니다.');
+                        }
+                      } catch (e) {
+                        console.error("Google login failed", e);
+                      }
+                    }}
+                    type="button"
+                    className="w-full bg-white border-2 border-slate-100 hover:border-hyundai-blue text-slate-600 font-bold py-4 rounded-2xl text-xs transition-all flex items-center justify-center gap-2 group shadow-sm hover:shadow-md"
+                  >
+                    <span className="w-6 h-6 bg-hyundai-blue rounded-full flex items-center justify-center text-[10px] text-white font-black group-hover:scale-110 transition-transform">H</span>
+                    <span>현대자동차 계정으로 로그인</span>
                   </button>
                 </div>
               </div>
